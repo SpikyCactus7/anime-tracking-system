@@ -20,7 +20,6 @@ erDiagram
         UUID anime_id FK
         number score
         text text
-        string user_email
         datetime created_at
     }
 
