@@ -28,7 +28,17 @@ erDiagram
         string name
     }
 
+    USER_ANIME_STATUS {
+        UUID id PK
+        UUID user_id FK
+        UUID anime_id FK
+        string status
+        datetime last_updated
+    }
+
     USER ||--o{ REVIEW : writes
     ANIME ||--o{ REVIEW : receives
     ANIME }o--o{ GENRE : has
+    USER ||--o{ USER_ANIME_STATUS : has
+    ANIME ||--o{ USER_ANIME_STATUS : linked_to
 ```

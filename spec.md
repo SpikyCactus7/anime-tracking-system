@@ -31,7 +31,16 @@
  - id (UUID, PK),
  - name (String).
 
+* UserAnimeStatus:
+ - id (UUID, PK),
+ - user_id (FK),
+ - anime_id (FK),
+ - status (String),
+ - last_updated (Datetime).
+
 ## Зв'язки
 * User пише Review (1:N).
 * Anime отримує Review (1:N).
 * Anime має Genre (M:N).
+* User має UserAnimeStatus (1:N).
+* Anime зв'язано з UserAnime (1:N).
