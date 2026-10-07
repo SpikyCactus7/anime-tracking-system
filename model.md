@@ -15,8 +15,9 @@ erDiagram
     }
 
     REVIEW {
-        UUID user_id PK, FK
-        UUID anime_id PK, FK
+        UUID id PK
+        UUID user_id FK
+        UUID anime_id FK
         number score
         text text
         string user_email
@@ -28,13 +29,7 @@ erDiagram
         string name
     }
 
-    ANIME_GENRES {
-        UUID anime_id PK, FK
-        UUID genre_id PK, FK
-    }
-
     USER ||--o{ REVIEW : writes
     ANIME ||--o{ REVIEW : receives
-    ANIME ||--o{ ANIME_GENRES : contains
-    GENRE ||--o{ ANIME_GENRES : belongs_to
+    ANIME }o--o{ GENRE : has
 ```
