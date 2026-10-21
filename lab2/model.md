@@ -140,9 +140,9 @@ flowchart LR
     User --- UC3
     API --- UC4
 
-    UC1b -.->|&lt;&lt;extend&gt;&gt;: жанр обрано| UC1
-    UC2 -.->|&lt;&lt;include&gt;&gt;| Auth
-    UC3 -.->|&lt;&lt;include&gt;&gt;| Auth
+    UC1b -. "«extend»: жанр обрано" .-> UC1
+    UC2 -. "«include»" .-> Auth
+    UC3 -. "«include»" .-> Auth
 ```
 
 ## ER-діаграма
