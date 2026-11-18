@@ -1,9 +1,5 @@
 # Sequence-діаграми UC-2: Оновити статус перегляду
 
-Діаграми деталізують взаємодію для зареєстрованого користувача та гостя.
-
-**Припущення:** перевірка активної сесії виконується через зовнішній механізм `SessionProvider`, якого немає в ER-моделі. Для пари `user_id` + `anime_id` існує не більше одного запису `USER_ANIME_STATUS`. Перед зміною статусу перевіряється наявність запису `ANIME`.
-
 ## Сценарій 1: Зареєстрований користувач задає статус аніме
 
 ```mermaid
@@ -12,7 +8,6 @@ sequenceDiagram
     participant WebUI
     participant StatusService
     participant AuthService
-    participant SessionProvider as SessionProvider (зовнішній)
     participant Database
 
     User->>WebUI: chooseStatus(animeId, status)
@@ -21,10 +16,8 @@ sequenceDiagram
     activate StatusService
     StatusService->>AuthService: validateSession(sessionId)
     activate AuthService
-    AuthService->>SessionProvider: validateSession(sessionId)
-    activate SessionProvider
-    SessionProvider-->>AuthService: activeSession(userId)
-    deactivate SessionProvider
+    AuthService->>AuthService: checkActiveSession(sessionId)
+    AuthService-->>AuthService: activeSession(userId)
     AuthService->>Database: findUserById(userId)
     activate Database
     Database-->>AuthService: USER
@@ -32,29 +25,31 @@ sequenceDiagram
     AuthService-->>StatusService: authorized(userId)
     deactivate AuthService
 
-    StatusService->>Database: findAnimeById(animeId)
-    activate Database
-    Database-->>StatusService: ANIME або not found
-    deactivate Database
-    alt ANIME існує
-        StatusService->>Database: findStatus(userId, animeId)
+    StatusService->>StatusService: validateStatus(status)
+    StatusService-->>StatusService: valid / invalid
+    alt Статус: дивлюсь, в планах або переглянуто
+        StatusService->>Database: findAnimeById(animeId)
         activate Database
-        Database-->>StatusService: USER_ANIME_STATUS або not found
+        Database-->>StatusService: ANIME або not found
         deactivate Database
-        alt Запис USER_ANIME_STATUS існує
-            StatusService->>Database: updateStatus(id, status, last_updated)
+        alt ANIME існує
             activate Database
-            Database-->>StatusService: updatedStatus
+            StatusService->>Database: findStatus(userId, animeId)
+            Database-->>StatusService: USER_ANIME_STATUS або not found
+            alt Запис USER_ANIME_STATUS існує
+                StatusService->>Database: updateStatus(id, status, last_updated)
+                Database-->>StatusService: updatedStatus
+            else Запис USER_ANIME_STATUS відсутній
+                StatusService->>Database: insertStatus(userId, animeId, status, last_updated)
+                Database-->>StatusService: createdStatus
+            end
             deactivate Database
-        else Запис USER_ANIME_STATUS відсутній
-            StatusService->>Database: insertStatus(userId, animeId, status, last_updated)
-            activate Database
-            Database-->>StatusService: createdStatus
-            deactivate Database
+            StatusService-->>WebUI: statusUpdated(status)
+        else ANIME не існує
+            StatusService-->>WebUI: animeNotFound()
         end
-        StatusService-->>WebUI: statusUpdated(status)
-    else ANIME не існує
-        StatusService-->>WebUI: animeNotFound()
+    else Статус некоректний
+        StatusService-->>WebUI: invalidStatus()
     end
     deactivate StatusService
     WebUI-->>User: showResult()
@@ -69,7 +64,6 @@ sequenceDiagram
     participant WebUI
     participant StatusService
     participant AuthService
-    participant SessionProvider as SessionProvider (зовнішній)
     participant Database
 
     Guest->>WebUI: chooseStatus(animeId, status)
@@ -78,16 +72,10 @@ sequenceDiagram
     activate StatusService
     StatusService->>AuthService: validateSession(sessionId)
     activate AuthService
-    AuthService->>SessionProvider: validateSession(sessionId)
-    activate SessionProvider
-    SessionProvider-->>AuthService: activeSession(userId) або inactiveSession
-    deactivate SessionProvider
+    AuthService->>AuthService: checkActiveSession(sessionId)
+    AuthService-->>AuthService: activeSession(userId) / inactiveSession
     alt Активної сесії немає
         AuthService-->>StatusService: unauthorized
-        deactivate AuthService
-        StatusService-->>WebUI: statusChangeRejected()
-        Note right of StatusService: USER_ANIME_STATUS не читається і не змінюється
-        WebUI-->>Guest: promptSignInOrRegister()
     else Сесія активна
         AuthService->>Database: findUserById(userId)
         activate Database
@@ -95,16 +83,17 @@ sequenceDiagram
         deactivate Database
         alt Запис USER існує
             AuthService-->>StatusService: authorized(userId)
-            deactivate AuthService
-            Note over StatusService,Database: Це авторизований користувач; продовження відповідає сценарію 1
-            StatusService-->>WebUI: continueAsAuthenticatedUser()
         else Запис USER відсутній
             AuthService-->>StatusService: unauthorized
-            deactivate AuthService
-            StatusService-->>WebUI: statusChangeRejected()
-            Note right of StatusService: USER_ANIME_STATUS не читається і не змінюється
-            WebUI-->>Guest: promptSignInOrRegister()
         end
+    end
+    deactivate AuthService
+
+    alt Авторизація не пройдена
+        StatusService-->>WebUI: statusChangeRejected()
+        WebUI-->>Guest: promptSignInOrRegister()
+    else Сесія активна та USER існує
+        StatusService-->>WebUI: continueAsAuthenticatedUser()
     end
     deactivate StatusService
     deactivate WebUI
